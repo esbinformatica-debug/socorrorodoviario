@@ -1,71 +1,203 @@
-<script type="module">
-import { criarOcorrencia } from "./firebase.js";
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitar Socorro</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: 20px auto;
+            padding: 15px;
+        }
+        .campo {
+            margin-bottom: 12px;
+        }
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+        }
+        #btnEnviar {
+            width: 100%;
+            padding: 12px;
+            background-color: #d9534f;
+            color: white;
+            border: none;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        #btnEnviar:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        #gpsStatus {
+            margin: 10px 0;
+            font-size: 14px;
+            color: #555;
+        }
+        .mensagem {
+            padding: 10px;
+            margin-top: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        .sucesso {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .erro {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
 
-let latitude = null;
-let longitude = null;
+    <h2>🆘 Solicitar Socorro</h2>
 
-const gpsStatus = document.getElementById("gpsStatus");
-const btnEnviar = document.getElementById("btnEnviar");
-const mensagem = document.getElementById("mensagem");
+    <form id="formSocorro" onsubmit="return false;">
+        <div class="campo">
+            <label for="nome">Nome:</label>
+            <input type="text" id="nome" required>
+        </div>
 
-function obterGPS() {
-    if (!navigator.geolocation) {
-        gpsStatus.innerText = "GPS não é suportado neste aparelho.";
-        btnEnviar.disabled = false; // Permite enviar mesmo sem GPS
-        return;
-    }
+        <div class="campo">
+            <label for="placa">Placa do Veículo:</label>
+            <input type="text" id="placa" required>
+        </div>
 
-    gpsStatus.innerText = "📡 Obtendo sua localização...";
+        <div class="campo">
+            <label for="telefone">Telefone / WhatsApp:</label>
+            <input type="tel" id="telefone" required>
+        </div>
 
-    navigator.geolocation.getCurrentPosition(
-        (posicao) => {
-            latitude = posicao.coords.latitude;
-            longitude = posicao.coords.longitude;
-            gpsStatus.innerText = `✅ GPS obtido: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
-            btnEnviar.disabled = false;
-        },
-        (erro) => {
-            console.warn("Erro ao obter GPS:", erro.message);
-            gpsStatus.innerText = "⚠️ Não foi possível obter o GPS. Você ainda pode enviar.";
-            btnEnviar.disabled = false;
-        },
-        { enableHighAccuracy: true, timeout: 10000 }
-    );
-}
+        <div class="campo">
+            <label for="rodovia">Rodovia:</label>
+            <input type="text" id="rodovia" placeholder="Ex: SP-060" required>
+        </div>
 
-// Inicia a busca do GPS ao carregar
-obterGPS();
+        <div class="campo">
+            <label for="sentido">Sentido:</label>
+            <select id="sentido" required>
+                <option value="">Selecione...</option>
+                <option value="Norte">Norte</option>
+                <option value="Sul">Sul</option>
+                <option value="Leste">Leste</option>
+                <option value="Oeste">Oeste</option>
+                <option value="Capital">Capital</option>
+                <option value="Interior">Interior</option>
+            </select>
+        </div>
 
-// Clique no botão de enviar
-btnEnviar.addEventListener("click", async () => {
-    btnEnviar.disabled = true;
-    btnEnviar.innerText = "Enviando...";
-    mensagem.style.display = "none";
+        <div class="campo">
+            <label for="problema">Descrição do Problema:</label>
+            <textarea id="problema" rows="3" required></placeholder="Ex: Pneu furado, falta de combustível..."></textarea>
+        </div>
 
-    const dados = {
-        nome: document.getElementById("nome").value,
-        placa: document.getElementById("placa").value,
-        telefone: document.getElementById("telefone").value,
-        rodovia: document.getElementById("rodovia").value,
-        sentido: document.getElementById("sentido").value,
-        problema: document.getElementById("problema").value,
-        latitude: latitude,
-        longitude: longitude
-    };
+        <div id="gpsStatus">📡 Aguardando GPS...</div>
 
-    try {
-        await criarOcorrencia(dados);
-        mensagem.className = "mensagem sucesso";
-        mensagem.innerText = "✅ Socorro solicitado com sucesso! Aguarde no local.";
-        mensagem.style.display = "block";
-    } catch (erro) {
-        console.error(erro);
-        mensagem.className = "mensagem erro";
-        mensagem.innerText = "❌ Erro ao solicitar socorro. Tente novamente.";
-        mensagem.style.display = "block";
-        btnEnviar.disabled = false;
-    } finally {
-        btnEnviar.innerText = "🆘 PEDIR SOCORRO";
-    }
-});
-</script>
+        <button type="button" id="btnEnviar" disabled>🆘 PEDIR SOCORRO</button>
+
+        <div id="mensagem" class="mensagem"></div>
+    </form>
+
+    <script type="module">
+        import { criarOcorrencia } from "./firebase.js";
+
+        let latitude = null;
+        let longitude = null;
+
+        const gpsStatus = document.getElementById("gpsStatus");
+        const btnEnviar = document.getElementById("btnEnviar");
+        const mensagem = document.getElementById("mensagem");
+
+        function obterGPS() {
+            if (!navigator.geolocation) {
+                if (gpsStatus) gpsStatus.innerText = "GPS não é suportado neste aparelho.";
+                if (btnEnviar) btnEnviar.disabled = false;
+                return;
+            }
+
+            if (gpsStatus) gpsStatus.innerText = "📡 Obtendo sua localização...";
+
+            navigator.geolocation.getCurrentPosition(
+                (posicao) => {
+                    latitude = posicao.coords.latitude;
+                    longitude = posicao.coords.longitude;
+                    if (gpsStatus) {
+                        gpsStatus.innerText = `✅ GPS obtido: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
+                    }
+                    if (btnEnviar) btnEnviar.disabled = false;
+                },
+                (erro) => {
+                    console.warn("Erro ao obter GPS:", erro.message);
+                    if (gpsStatus) {
+                        gpsStatus.innerText = "⚠️ Não foi possível obter o GPS. Você ainda pode enviar.";
+                    }
+                    if (btnEnviar) btnEnviar.disabled = false;
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        }
+
+        // Inicia busca do GPS
+        obterGPS();
+
+        // Manipula a ação de envio
+        if (btnEnviar) {
+            btnEnviar.addEventListener("click", async () => {
+                btnEnviar.disabled = true;
+                btnEnviar.innerText = "Enviando...";
+                if (mensagem) mensagem.style.display = "none";
+
+                const obterValor = (id) => {
+                    const el = document.getElementById(id);
+                    return el ? el.value : "";
+                };
+
+                const dados = {
+                    nome: obterValor("nome"),
+                    placa: obterValor("placa"),
+                    telefone: obterValor("telefone"),
+                    rodovia: obterValor("rodovia"),
+                    sentido: obterValor("sentido"),
+                    problema: obterValor("problema"),
+                    latitude: latitude,
+                    longitude: longitude,
+                    dataCriacao: new Date().toISOString()
+                };
+
+                try {
+                    await criarOcorrencia(dados);
+                    if (mensagem) {
+                        mensagem.className = "mensagem sucesso";
+                        mensagem.innerText = "✅ Socorro solicitado com sucesso! Aguarde no local.";
+                        mensagem.style.display = "block";
+                    }
+                } catch (erro) {
+                    console.error("Erro no envio:", erro);
+                    if (mensagem) {
+                        mensagem.className = "mensagem erro";
+                        mensagem.innerText = "❌ Erro ao solicitar socorro. Tente novamente.";
+                        mensagem.style.display = "block";
+                    }
+                    btnEnviar.disabled = false;
+                } finally {
+                    btnEnviar.innerText = "🆘 PEDIR SOCORRO";
+                }
+            });
+        }
+    </script>
+</body>
+</html>
