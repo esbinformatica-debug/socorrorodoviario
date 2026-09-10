@@ -1,5 +1,5 @@
 // ==========================================
-// FIREBASE
+// FIREBASE & FIRESTORE CONFIG
 // ==========================================
 
 import { initializeApp } from
@@ -12,181 +12,109 @@ import {
     onSnapshot,
     doc,
     updateDoc,
+    query,
+    orderBy,
     serverTimestamp
 } from
     "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
 
-// ==========================================
-// CONFIGURAÇÃO DO SEU FIREBASE
-// ==========================================
-
+// Configuração do seu projeto Firebase
 const firebaseConfig = {
-
     apiKey: "AIzaSyDCqAkO1L5935U1E2a2PW5HkpZJy0Gauwc",
-
     authDomain: "derchamados.firebaseapp.com",
-
     projectId: "derchamados",
-
     storageBucket: "derchamados.firebasestorage.app",
-
     messagingSenderId: "922256232360",
-
     appId: "1:922256232360:web:a0492c02fcbbf6a7dd579d",
-
     measurementId: "G-0BNGCJ6NSH"
-
 };
 
 
-// ==========================================
-// INICIALIZAR FIREBASE
-// ==========================================
-
+// Inicialização do Firebase e Banco de Dados
 const app = initializeApp(firebaseConfig);
-
-
-// ==========================================
-// INICIALIZAR FIRESTORE
-// ==========================================
-
 const db = getFirestore(app);
 
 
 // ==========================================
-// CRIAR OCORRÊNCIA
-// Usado pelo motorista.html
+// FUNÇÃO: CRIAR OCORRÊNCIA (motorista.html)
 // ==========================================
-
 export async function criarOcorrencia(dados) {
+    try {
+        const referencia = await addDoc(
+            collection(db, "ocorrencias"),
+            {
+                nome: dados.nome || "",
+                placa: dados.placa || "",
+                telefone: dados.telefone || "",
+                rodovia: dados.rodovia || "",
+                sentido: dados.sentido || "",
+                problema: dados.problema || "",
+                latitude: dados.latitude ?? null,
+                longitude: dados.longitude ?? null,
+                status: "nova",
+                operador: "",
+                criadoEm: serverTimestamp(),
+                atualizadoEm: serverTimestamp()
+            }
+        );
 
-    const referencia = await addDoc(
-
-        collection(db, "ocorrencias"),
-
-        {
-
-            nome: dados.nome || "",
-
-            placa: dados.placa || "",
-
-            telefone: dados.telefone || "",
-
-            rodovia: dados.rodovia || "",
-
-            sentido: dados.sentido || "",
-
-            problema: dados.problema || "",
-
-            latitude: dados.latitude ?? null,
-
-            longitude: dados.longitude ?? null,
-
-            status: "nova",
-
-            operador: "",
-
-            criadoEm: serverTimestamp(),
-
-            atualizadoEm: serverTimestamp()
-
-        }
-
-    );
-
-
-    return referencia.id;
-
+        return referencia.id;
+    } catch (erro) {
+        console.error("Erro ao registrar ocorrência:", erro);
+        throw erro;
+    }
 }
 
 
 // ==========================================
-// ESCUTAR OCORRÊNCIAS
-// Usado pelo painel.html
+// FUNÇÃO: ESCUTAR OCORRÊNCIAS EM TEMPO REAL
+// (operador.html / painel.html)
 // ==========================================
-
 export function escutarOcorrencias(callback) {
+    // Consulta ordenando do chamado mais recente para o mais antigo
+    const q = query(
+        collection(db, "ocorrencias"),
+        orderBy("criadoEm", "desc")
+    );
 
     return onSnapshot(
-
-        collection(db, "ocorrencias"),
-
-        function(snapshot) {
-
+        q,
+        (snapshot) => {
             const ocorrencias = [];
 
-
-            snapshot.forEach(
-
-                function(item) {
-
-                    ocorrencias.push({
-
-                        id: item.id,
-
-                        ...item.data()
-
-                    });
-
-                }
-
-            );
-
-
-            // Mais recentes primeiro
-
-            ocorrencias.reverse();
-
+            snapshot.forEach((item) => {
+                ocorrencias.push({
+                    id: item.id,
+                    ...item.data()
+                });
+            });
 
             callback(ocorrencias);
-
         },
-
-        function(erro) {
-
-            console.error(
-                "Erro ao ler ocorrências:",
-                erro
-            );
-
+        (erro) => {
+            console.error("Erro no listener de ocorrências:", erro);
         }
-
     );
-
 }
 
 
 // ==========================================
-// ALTERAR STATUS
-// Usado pelo painel.html
+// FUNÇÃO: ALTERAR STATUS
+// (operador.html / painel.html)
 // ==========================================
-
-export async function alterarStatus(
-
-    id,
-
-    status,
-
-    operador = ""
-
-) {
-
-
-    await updateDoc(
-
-        doc(db, "ocorrencias", id),
-
-        {
-
-            status: status,
-
-            operador: operador,
-
-            atualizadoEm: serverTimestamp()
-
-        }
-
-    );
-
+export async function alterarStatus(id, status, operador = "") {
+    try {
+        await updateDoc(
+            doc(db, "ocorrencias", id),
+            {
+                status: status,
+                operador: operador,
+                atualizadoEm: serverTimestamp()
+            }
+        );
+    } catch (erro) {
+        console.error("Erro ao alterar status:", erro);
+        throw erro;
+    }
 }
