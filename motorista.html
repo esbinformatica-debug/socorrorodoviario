@@ -65,13 +65,14 @@
 <body>
 
     <div style="text-align: center;">
-        <img src="logoDER.png" alt="Logo DER">
+        <!-- Nome corrigido para bater exatamente com logoDER.png -->
+        <img src="logoDER.png" alt="Logo DER" style="max-width: 200px;">
     </div>
 
     <h2>Departamento de Estrada de Rodagem - SP</h2> 
     <h2 style="text-align: center;color:red;">Solicitar Socorro</h2>
 
-    <form id="formSocorro" onsubmit="return false;">
+    <form id="formSocorro">
         <div class="campo">
             <label for="nome">Nome:</label>
             <input type="text" id="nome" required>
@@ -123,7 +124,7 @@
 
         <div id="gpsStatus">📡 Aguardando GPS...</div>
 
-        <button type="button" id="btnEnviar" disabled>PEDIR SOCORRO</button>
+        <button type="submit" id="btnEnviar" disabled>PEDIR SOCORRO</button>
 
         <div id="mensagem" class="mensagem"></div>
     </form>
@@ -134,6 +135,7 @@
         let latitude = null;
         let longitude = null;
 
+        const formSocorro = document.getElementById("formSocorro");
         const gpsStatus = document.getElementById("gpsStatus");
         const btnEnviar = document.getElementById("btnEnviar");
         const mensagem = document.getElementById("mensagem");
@@ -170,9 +172,11 @@
         // Inicia busca do GPS
         obterGPS();
 
-        // Manipula a ação de envio
-        if (btnEnviar) {
-            btnEnviar.addEventListener("click", async () => {
+        // Manipula o envio do formulário
+        if (formSocorro) {
+            formSocorro.addEventListener("submit", async (event) => {
+                event.preventDefault();
+
                 btnEnviar.disabled = true;
                 btnEnviar.innerText = "Enviando...";
                 if (mensagem) mensagem.style.display = "none";
@@ -192,17 +196,22 @@
                     sentido: obterValor("sentido"),
                     problema: obterValor("problema"),
                     latitude: latitude,
-                    longitude: longitude,
-                    dataCriacao: new Date().toISOString()
+                    longitude: longitude
                 };
 
                 try {
                     await criarOcorrencia(dados);
                     if (mensagem) {
                         mensagem.className = "mensagem sucesso";
-                        mensagem.innerText = "✅ Socorro solicitado com sucesso! Aguarde no local.";
+                        mensagem.innerText = "✅ Socorro solicitado com sucesso! Redirecionando para o painel...";
                         mensagem.style.display = "block";
                     }
+
+                    // Redireciona para a página do painel após 1.5 segundo
+                    setTimeout(() => {
+                        window.location.href = "painel.html";
+                    }, 1500);
+
                 } catch (erro) {
                     console.error("Erro no envio:", erro);
                     if (mensagem) {
@@ -211,7 +220,6 @@
                         mensagem.style.display = "block";
                     }
                     btnEnviar.disabled = false;
-                } finally {
                     btnEnviar.innerText = "PEDIR SOCORRO";
                 }
             });
