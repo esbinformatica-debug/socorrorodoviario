@@ -46,7 +46,9 @@ export async function criarOcorrencia(dados) {
             {
                 nome: dados.nome || "",
                 placa: dados.placa || "",
-                telefone: dados.telefone || "",
+                modelo: dados.modelo ||"",
+                n_ocupantes: dados.ocupantes ||"",
+                telefone: dados.telefone || "",      
                 rodovia: dados.rodovia || "",
                 sentido: dados.sentido || "",
                 problema: dados.problema || "",
