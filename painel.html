@@ -111,6 +111,15 @@
         .id {
             font-weight: bold;
             color: #2878d7;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .hora-chamado {
+            font-size: 12px;
+            color: #777;
+            font-weight: normal;
         }
 
         .motorista {
@@ -167,6 +176,11 @@
 
         .campo strong {
             font-size: 15px;
+        }
+
+        .campo.destaque {
+            background: #e8f0fe;
+            border: 1px solid #cce0ff;
         }
 
         /* MAPA VISUAL */
@@ -292,6 +306,10 @@
 
                 <div id="areaDetalhes" style="display:none;">
                     <div class="dados">
+                        <div class="campo destaque">
+                            <small>Data/Hora do Chamado</small>
+                            <strong id="dataCriacao">🕒 -</strong>
+                        </div>
                         <div class="campo"><small>Motorista</small><strong id="nome">-</strong></div>
                         <div class="campo"><small>Placa</small><strong id="placa">-</strong></div>
                         <div class="campo"><small>Modelo</small><strong id="modelo">-</strong></div>
@@ -335,6 +353,37 @@ escutarOcorrencias((lista) => {
     atualizarPainel();
 });
 
+// Função auxiliar para converter o Timestamp do Firestore para texto
+function formatarDataHora(timestamp) {
+    if (!timestamp) return "Aguardando...";
+    
+    // Se for objeto Timestamp do Firestore
+    if (typeof timestamp.toDate === 'function') {
+        return timestamp.toDate().toLocaleString('pt-BR');
+    }
+    
+    // Se for objeto Date ou String ISO
+    const data = new Date(timestamp);
+    if (!isNaN(data.getTime())) {
+        return data.toLocaleString('pt-BR');
+    }
+
+    return "-";
+}
+
+// Extrai somente as horas (HH:MM) para a lista
+function formatarHoraApenas(timestamp) {
+    if (!timestamp) return "";
+    let data;
+    if (typeof timestamp.toDate === 'function') {
+        data = timestamp.toDate();
+    } else {
+        data = new Date(timestamp);
+    }
+    if (isNaN(data.getTime())) return "";
+    return data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
 function atualizarPainel() {
     // Atualiza Estatísticas
     document.getElementById("totalNovas").innerText = ocorrencias.filter(o => o.status === "nova").length;
@@ -355,8 +404,13 @@ function atualizarPainel() {
         const div = document.createElement("div");
         div.className = `ocorrencia ${o.id === selecionada ? 'selecionada' : ''}`;
 
+        const hora = formatarHoraApenas(o.criadoEm);
+
         div.innerHTML = `
-            <div class="id">#${o.id.substring(0, 8)}</div>
+            <div class="id">
+                <span>#${o.id.substring(0, 8)}</span>
+                <span class="hora-chamado">🕒 ${hora}</span>
+            </div>
             <div class="motorista">${o.nome || "Motorista não identificado"}</div>
             <div>🚗 ${o.placa || "-"}</div>
             <div class="local">📍 ${o.rodovia || "Rodovia não informada"}</div>
@@ -376,6 +430,9 @@ function atualizarPainel() {
 function mostrarDetalhes(o) {
     document.getElementById("titulo").innerText = "Ocorrência #" + o.id.substring(0, 8);
     document.getElementById("areaDetalhes").style.display = "block";
+
+    // Exibição formatada da Data e Hora do Chamado
+    document.getElementById("dataCriacao").innerText = "🕒 " + formatarDataHora(o.criadoEm);
 
     document.getElementById("nome").innerText = o.nome || "-";
     document.getElementById("placa").innerText = o.placa || "-";
