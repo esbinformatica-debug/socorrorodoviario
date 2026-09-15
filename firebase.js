@@ -12,14 +12,13 @@ import {
     onSnapshot,
     doc,
     updateDoc,
+    deleteDoc,
     query,
     orderBy,
     serverTimestamp
 } from
     "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-
-// Configuração do seu projeto Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyDCqAkO1L5935U1E2a2PW5HkpZJy0Gauwc",
     authDomain: "derchamados.firebaseapp.com",
@@ -30,15 +29,13 @@ const firebaseConfig = {
     measurementId: "G-0BNGCJ6NSH"
 };
 
-
-// Inicialização do Firebase e Banco de Dados
 const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
+export const db = getFirestore(app);
 
 // ==========================================
-// FUNÇÃO: CRIAR OCORRÊNCIA (motorista.html)
+// FUNÇÕES DE OCORRÊNCIAS
 // ==========================================
+
 export async function criarOcorrencia(dados) {
     try {
         const referencia = await addDoc(
@@ -54,13 +51,12 @@ export async function criarOcorrencia(dados) {
                 problema: dados.problema || "",
                 latitude: dados.latitude ?? null,
                 longitude: dados.longitude ?? null,
-                status: "nova",
-                operador: "",
+                status: dados.status || "nova",
+                operador: dados.operador || "",
                 criadoEm: serverTimestamp(),
                 atualizadoEm: serverTimestamp()
             }
         );
-
         return referencia.id;
     } catch (erro) {
         console.error("Erro ao registrar ocorrência:", erro);
@@ -68,11 +64,6 @@ export async function criarOcorrencia(dados) {
     }
 }
 
-
-// ==========================================
-// FUNÇÃO: ESCUTAR OCORRÊNCIAS EM TEMPO REAL
-// (operador.html / painel.html)
-// ==========================================
 export function escutarOcorrencias(callback) {
     const q = query(
         collection(db, "ocorrencias"),
@@ -83,14 +74,12 @@ export function escutarOcorrencias(callback) {
         q,
         (snapshot) => {
             const ocorrencias = [];
-
             snapshot.forEach((item) => {
                 ocorrencias.push({
                     id: item.id,
                     ...item.data()
                 });
             });
-
             callback(ocorrencias);
         },
         (erro) => {
@@ -99,11 +88,6 @@ export function escutarOcorrencias(callback) {
     );
 }
 
-
-// ==========================================
-// FUNÇÃO: ALTERAR STATUS
-// (operador.html / painel.html)
-// ==========================================
 export async function alterarStatus(id, status, operador = "") {
     try {
         await updateDoc(
@@ -116,6 +100,31 @@ export async function alterarStatus(id, status, operador = "") {
         );
     } catch (erro) {
         console.error("Erro ao alterar status:", erro);
+        throw erro;
+    }
+}
+
+// ==========================================
+// FUNÇÕES EXCLUSIVAS DO ADMIN (CRUD)
+// ==========================================
+
+export async function atualizarOcorrencia(id, dados) {
+    try {
+        await updateDoc(doc(db, "ocorrencias", id), {
+            ...dados,
+            atualizadoEm: serverTimestamp()
+        });
+    } catch (erro) {
+        console.error("Erro ao atualizar ocorrência:", erro);
+        throw erro;
+    }
+}
+
+export async function excluirOcorrencia(id) {
+    try {
+        await deleteDoc(doc(doc(db, "ocorrencias", id)));
+    } catch (erro) {
+        console.error("Erro ao excluir ocorrência:", erro);
         throw erro;
     }
 }
