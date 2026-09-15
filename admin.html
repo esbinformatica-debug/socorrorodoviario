@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatórios de Ocorrências - Sinal Amarelo</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f4f6f9; color: #333; padding: 20px; }
+        header { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .filter-card { background: white; padding: 15px 20px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap; align-items: center; }
+        .filter-group { display: flex; flex-direction: column; gap: 5px; }
+        .filter-group label { font-size: 12px; font-weight: bold; color: #64748b; }
+        input, select { padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
+        
+        .btn-primary { background: #0284c7; color: white; border: none; padding: 9px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-primary:hover { background: #0369a1; }
+        .btn-success { background: #16a34a; color: white; border: none; padding: 9px 16px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .btn-success:hover { background: #15803d; }
+        
+        .table-card { background: white; border-radius: 8px; border: 1px solid #e2e8f0; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th, td { padding: 12px 15px; border-bottom: 1px solid #e2e8f0; font-size: 14px; }
+        th { background: #f8fafc; color: #475569; font-weight: 600; }
+        tr:hover { background: #f8fafc; }
+        
+        .badge { padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+        .badge-nova { background: #fef3c7; color: #d97706; }
+        .badge-atendimento { background: #dbeafe; color: #2563eb; }
+        .badge-socorro { background: #ffedd5; color: #ea580c; }
+        .badge-encerrada { background: #f1f5f9; color: #64748b; }
+
+        /* Botões de Ação CRUD */
+        .btn-action { padding: 5px 10px; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold; margin-right: 4px; }
+        .btn-edit { background-color: #f59e0b; color: white; }
+        .btn-edit:hover { background-color: #d97706; }
+        .btn-delete { background-color: #ef4444; color: white; }
+        .btn-delete:hover { background-color: #dc2626; }
+
+        /* Estilo do Modal */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal.active { display: flex; }
+        .modal-content { background: white; padding: 25px; border-radius: 8px; width: 100%; max-width: 500px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .modal-content h3 { margin-bottom: 15px; }
+        .form-group { margin-bottom: 12px; display: flex; flex-direction: column; gap: 5px; }
+        .form-group label { font-size: 12px; font-weight: bold; color: #475569; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; }
+        .btn-cancel { background: #94a3b8; color: white; border: none; padding: 8px 14px; border-radius: 6px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h2>Administração - Histórico de Ocorrências</h2>
+        <button class="btn-success" id="btnNovaOcorrencia">+ Nova Ocorrência</button>
+    </header>
+
+    <div class="filter-card">
+        <div class="filter-group">
+            <label>Buscar por Nome ou Placa:</label>
+            <input type="text" id="filtBusca" placeholder="Motorista ou placa...">
+        </div>
+        <div class="filter-group">
+            <label>Data Início:</label>
+            <input type="date" id="filtDataInicio">
+        </div>
+        <div class="filter-group">
+            <label>Data Fim:</label>
+            <input type="date" id="filtDataFim">
+        </div>
+        <div class="filter-group">
+            <label>Rodovia:</label>
+            <input type="text" id="filtRodovia" placeholder="Ex: BR-101">
+        </div>
+        <button class="btn-primary" id="btnFiltrar">Aplicar Filtros</button>
+    </div>
+
+    <div class="table-card">
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Data/Hora</th>
+                    <th>Motorista</th>
+                    <th>Placa</th>
+                    <th>Telefone</th>
+                    <th>Rodovia</th>
+                    <th>Sentido</th>
+                    <th>Problema</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tabelaCorpo"></tbody>
+        </table>
+    </div>
+
+    <!-- Modal para Criar/Editar Ocorrência -->
+    <div class="modal" id="modalOcorrencia">
+        <div class="modal-content">
+            <h3 id="modalTitulo">Nova Ocorrência</h3>
+            <form id="formOcorrencia">
+                <input type="hidden" id="ocorrenciaId">
+                <div class="form-group">
+                    <label>Motorista:</label>
+                    <input type="text" id="inputNome" required>
+                </div>
+                <div class="form-group">
+                    <label>Placa:</label>
+                    <input type="text" id="inputPlaca" required>
+                </div>
+                <div class="form-group">
+                    <label>Telefone:</label>
+                    <input type="text" id="inputTelefone" required>
+                </div>
+                <div class="form-group">
+                    <label>Rodovia:</label>
+                    <input type="text" id="inputRodovia" required>
+                </div>
+                <div class="form-group">
+                    <label>Sentido:</label>
+                    <input type="text" id="inputSentido" required>
+                </div>
+                <div class="form-group">
+                    <label>Problema:</label>
+                    <input type="text" id="inputProblema" required>
+                </div>
+                <div class="form-group">
+                    <label>Status:</label>
+                    <select id="selectStatus">
+                        <option value="nova">Nova</option>
+                        <option value="atendimento">Em Atendimento</option>
+                        <option value="socorro">Socorro</option>
+                        <option value="encerrada">Encerrada</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn-cancel" id="btnFecharModal">Cancelar</button>
+                    <button type="submit" class="btn-primary">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { escutarOcorrencias, criarOcorrencia, atualizarOcorrencia, excluirOcorrencia } from "./firebase.js";
+
+        let todasOcorrencias = [];
+
+        escutarOcorrencias(function(lista) {
+            todasOcorrencias = lista;
+            aplicarFiltros();
+        });
+
+        function formatarDataHora(timestamp) {
+            if (!timestamp) return "-";
+            if (typeof timestamp.toDate === 'function') return timestamp.toDate().toLocaleString('pt-BR');
+            const data = new Date(timestamp);
+            return !isNaN(data.getTime()) ? data.toLocaleString('pt-BR') : "-";
+        }
+
+        function aplicarFiltros() {
+            const dInicio = document.getElementById("filtDataInicio").value;
+            const dFim = document.getElementById("filtDataFim").value;
+            const rodovia = document.getElementById("filtRodovia").value.toLowerCase().trim();
+            const termoBusca = document.getElementById("filtBusca").value.toLowerCase().trim();
+
+            const ocorrenciasFiltradas = todasOcorrencias.filter(o => {
+                let okData = true;
+                let okRodovia = true;
+                let okBusca = true;
+
+                if (o.criadoEm) {
+                    const dataObj = typeof o.criadoEm.toDate === 'function' ? o.criadoEm.toDate() : new Date(o.criadoEm);
+                    if (dInicio) {
+                        const dtStart = new Date(dInicio + "T00:00:00");
+                        if (dataObj < dtStart) okData = false;
+                    }
+                    if (dFim) {
+                        const dtEnd = new Date(dFim + "T23:59:59");
+                        if (dataObj > dtEnd) okData = false;
+                    }
+                }
+
+                if (rodovia) {
+                    const rItem = (o.rodovia || "").toLowerCase();
+                    if (!rItem.includes(rodovia)) okRodovia = false;
+                }
+
+                if (termoBusca) {
+                    const nome = (o.nome || "").toLowerCase();
+                    const placa = (o.placa || "").toLowerCase();
+                    if (!nome.includes(termoBusca) && !placa.includes(termoBusca)) {
+                        okBusca = false;
+                    }
+                }
+
+                return okData && okRodovia && okBusca;
+            });
+
+            renderizarTabela(ocorrenciasFiltradas);
+        }
+
+        function renderizarTabela(lista) {
+            const tbody = document.getElementById("tabelaCorpo");
+            tbody.innerHTML = "";
+
+            if (lista.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:#64748b;">Nenhuma ocorrência encontrada.</td></tr>`;
+                return;
+            }
+
+            lista.forEach(o => {
+                const tr = document.createElement("tr");
+                tr.innerHTML = `
+                    <td>#${o.id ? o.id.substring(0,6) : "-"}</td>
+                    <td>${formatarDataHora(o.criadoEm)}</td>
+                    <td>${o.nome || "-"}</td>
+                    <td>${o.placa || "-"}</td>
+                    <td>${o.telefone || "-"}</td>
+                    <td>${o.rodovia || "-"}</td>
+                    <td>${o.sentido || "-"}</td>
+                    <td>${o.problema || "-"}</td>
+                    <td><span class="badge badge-${o.status}">${o.status || "nova"}</span></td>
+                    <td>
+                        <button class="btn-action btn-edit" data-id="${o.id}">Editar</button>
+                        <button class="btn-action btn-delete" data-id="${o.id}">Excluir</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.querySelectorAll(".btn-edit").forEach(btn => {
+                btn.onclick = (e) => abrirModalEditar(e.target.dataset.id);
+            });
+
+            document.querySelectorAll(".btn-delete").forEach(btn => {
+                btn.onclick = (e) => deletarOcorrencia(e.target.dataset.id);
+            });
+        }
+
+        const modal = document.getElementById("modalOcorrencia");
+        const form = document.getElementById("formOcorrencia");
+
+        function abrirModalCriar() {
+            document.getElementById("modalTitulo").innerText = "Nova Ocorrência";
+            document.getElementById("ocorrenciaId").value = "";
+            form.reset();
+            modal.classList.add("active");
+        }
+
+        function abrirModalEditar(id) {
+            const item = todasOcorrencias.find(o => o.id === id);
+            if (!item) return;
+
+            document.getElementById("modalTitulo").innerText = "Editar Ocorrência";
+            document.getElementById("ocorrenciaId").value = item.id;
+            document.getElementById("inputNome").value = item.nome || "";
+            document.getElementById("inputPlaca").value = item.placa || "";
+            document.getElementById("inputTelefone").value = item.telefone || "";
+            document.getElementById("inputRodovia").value = item.rodovia || "";
+            document.getElementById("inputSentido").value = item.sentido || "";
+            document.getElementById("inputProblema").value = item.problema || "";
+            document.getElementById("selectStatus").value = item.status || "nova";
+
+            modal.classList.add("active");
+        }
+
+        function fecharModal() {
+            modal.classList.remove("active");
+        }
+
+        async function deletarOcorrencia(id) {
+            if (confirm("Tem certeza que deseja excluir esta ocorrência?")) {
+                try {
+                    if (typeof excluirOcorrencia === "function") {
+                        await excluirOcorrencia(id);
+                    } else {
+                        console.warn("A função excluirOcorrencia precisa estar exportada no firebase.js");
+                    }
+                } catch (err) {
+                    alert("Erro ao excluir: " + err.message);
+                }
+            }
+        }
+
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            const id = document.getElementById("ocorrenciaId").value;
+            const dados = {
+                nome: document.getElementById("inputNome").value,
+                placa: document.getElementById("inputPlaca").value,
+                telefone: document.getElementById("inputTelefone").value,
+                rodovia: document.getElementById("inputRodovia").value,
+                sentido: document.getElementById("inputSentido").value,
+                problema: document.getElementById("inputProblema").value,
+                status: document.getElementById("selectStatus").value
+            };
+
+            try {
+                if (id) {
+                    if (typeof atualizarOcorrencia === "function") await atualizarOcorrencia(id, dados);
+                } else {
+                    dados.criadoEm = new Date();
+                    if (typeof criarOcorrencia === "function") await criarOcorrencia(dados);
+                }
+                fecharModal();
+            } catch (err) {
+                alert("Erro ao salvar: " + err.message);
+            }
+        };
+
+        document.getElementById("btnNovaOcorrencia").onclick = abrirModalCriar;
+        document.getElementById("btnFecharModal").onclick = fecharModal;
+        document.getElementById("btnFiltrar").onclick = aplicarFiltros;
+        document.getElementById("filtBusca").oninput = aplicarFiltros;
+    </script>
+</body>
+</html>
