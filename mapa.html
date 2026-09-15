@@ -1,150 +1,97 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapa de Chamados - Socorro Rodoviário</title>
-
-    <!-- CSS do Leaflet -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
+    <title>Mapa de Ocorrências Em Tempo Real</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body, html { height: 100%; width: 100%; font-family: Arial, sans-serif; background: #eef1f5; color: #202733; overflow: hidden; }
-
-        header {
-            height: 70px;
-            background: #14213d;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 25px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-            position: relative;
-            z-index: 1000;
-        }
-
-        header h1 { font-size: 22px; }
-
-        .stats-bar { display: flex; gap: 20px; font-weight: bold; font-size: 14px; }
-        .badge-stat { padding: 6px 14px; border-radius: 20px; background: rgba(255, 255, 255, 0.1); display: flex; align-items: center; gap: 8px; }
-        .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-        .dot-nova { background: #d63031; }
-        .dot-atendimento { background: #b9770e; }
-        .dot-socorro { background: #2469ad; }
-
-        #map { width: 100%; height: calc(100vh - 70px); }
-
-        .info-card { font-family: Arial, sans-serif; padding: 5px; max-width: 250px; }
-        .info-card h4 { margin-bottom: 5px; color: #14213d; }
-        .info-card p { font-size: 13px; margin: 3px 0; color: #555; }
-        .info-card .status-tag { display: inline-block; margin-top: 6px; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: bold; color: white; }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body, html { width: 100%; height: 100%; display: flex; flex-direction: column; }
+        header { background: #1e293b; color: white; padding: 15px 20px; z-index: 1000; display: flex; justify-content: space-between; align-items: center; }
+        #map { flex: 1; width: 100%; }
+        .popup-content h4 { margin-bottom: 5px; color: #0f172a; }
+        .popup-content p { font-size: 13px; margin-bottom: 3px; color: #475569; }
+        .badge { display: inline-block; padding: 2px 6px; border-radius: 10px; font-size: 11px; font-weight: bold; margin-top: 5px; }
+        .badge-nova { background: #fef3c7; color: #d97706; }
+        .badge-atendimento { background: #dbeafe; color: #2563eb; }
+        .badge-socorro { background: #ffedd5; color: #ea580c; }
     </style>
 </head>
-
 <body>
 
-<header>
-    <h1>🗺️ Central de Socorro - Mapa de Ocorrências</h1>
-    <div class="stats-bar">
-        <div class="badge-stat"><span class="dot dot-nova"></span> Novas: <span id="countNova">0</span></div>
-        <div class="badge-stat"><span class="dot dot-atendimento"></span> Em Atendimento: <span id="countAtendimento">0</span></div>
-        <div class="badge-stat"><span class="dot dot-socorro"></span> Socorro Acionado: <span id="countSocorro">0</span></div>
-    </div>
-</header>
+    <header>
+        <h3>Mapa Operacional de Chamados</h3>
+        <input type="text" id="buscaMapa" placeholder="🔍 Buscar motorista ou placa no mapa..." style="padding: 8px 12px; border-radius: 6px; border: none; width: 280px;">
+    </header>
 
-<div id="map"></div>
+    <div id="map"></div>
 
-<!-- JS do Leaflet -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script type="module">
+        import { escutarOcorrencias } from "./firebase.js";
 
-<script type="module">
-import { escutarOcorrencias } from "./firebase.js";
+        // Inicializa o mapa centralizado em SP por padrão
+        const map = L.map('map').setView([-23.55052, -46.633308], 8);
 
-// Inicializa o mapa centralizado no Brasil
-const map = L.map('map').setView([-23.55052, -46.633308], 10);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
 
-// Adiciona as camadas do OpenStreetMap
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '© OpenStreetMap'
-}).addTo(map);
+        const markersGroup = L.layerGroup().addTo(map);
+        let todasOcorrencias = [];
+        let termoBusca = "";
 
-let markersGroup = L.featureGroup().addTo(map);
-
-escutarOcorrencias((ocorrencias) => {
-    atualizarContadores(ocorrencias);
-    atualizarMarcadores(ocorrencias);
-});
-
-function atualizarContadores(ocorrencias) {
-    document.getElementById("countNova").innerText = ocorrencias.filter(o => o.status === "nova").length;
-    document.getElementById("countAtendimento").innerText = ocorrencias.filter(o => o.status === "atendimento").length;
-    document.getElementById("countSocorro").innerText = ocorrencias.filter(o => o.status === "socorro").length;
-}
-
-function atualizarMarcadores(ocorrencias) {
-    markersGroup.clearLayers();
-
-    const ocorrenciasAtivas = ocorrencias.filter(o => 
-        o.status !== "encerrada" && 
-        o.latitude !== undefined && o.latitude !== null &&
-        o.longitude !== undefined && o.longitude !== null
-    );
-
-    ocorrenciasAtivas.forEach(o => {
-        const lat = parseFloat(o.latitude);
-        const lng = parseFloat(o.longitude);
-        if (isNaN(lat) || isNaN(lng)) return;
-
-        const cor = obterCorPin(o.status);
-
-        // Cria marcador circular colorido no Leaflet
-        const marker = L.circleMarker([lat, lng], {
-            radius: 10,
-            fillColor: cor,
-            color: "#ffffff",
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.9
+        escutarOcorrencias(function(lista) {
+            todasOcorrencias = lista;
+            renderizarMarcadores();
         });
 
-        marker.bindPopup(`
-            <div class="info-card">
-                <h4>#${o.id.substring(0, 8)} - ${o.nome || "Motorista"}</h4>
-                <p><strong>🚗 Veículo:</strong> ${o.modelo || "-"} (${o.placa || "-"})</p>
-                <p><strong>📍 Local:</strong> ${o.rodovia || "N/I"} - Sentido: ${o.sentido || "N/I"}</p>
-                <p><strong>⚠️ Problema:</strong> ${o.problema || "N/A"}</p>
-                <p><strong>📞 Tel:</strong> ${o.telefone || "-"}</p>
-                <span class="status-tag" style="background-color:${cor}">${textoStatus(o.status)}</span>
-            </div>
-        `);
+        document.getElementById("buscaMapa").addEventListener("input", (e) => {
+            termoBusca = e.target.value.toLowerCase().trim();
+            renderizarMarcadores();
+        });
 
-        markersGroup.addLayer(marker);
-    });
+        function renderizarMarcadores() {
+            markersGroup.clearLayers();
 
-    // Enquadra automaticamente a visão da TV em todas as ocorrências
-    if (markersGroup.getLayers().length > 0) {
-        map.fitBounds(markersGroup.getBounds().pad(0.1));
-    }
-}
+            const ocorrenciasFiltradas = todasOcorrencias.filter(o => {
+                const ativas = o.status !== "encerrada" && o.latitude && o.longitude;
+                const nome = (o.nome || "").toLowerCase();
+                const placa = (o.placa || "").toLowerCase();
+                const atendeFiltro = nome.includes(termoBusca) || placa.includes(termoBusca);
+                
+                return ativas && atendeFiltro;
+            });
 
-function obterCorPin(status) {
-    switch (status) {
-        case "nova": return "#d63031";
-        case "atendimento": return "#b9770e";
-        case "socorro": return "#2469ad";
-        default: return "#777777";
-    }
-}
+            if (ocorrenciasFiltradas.length > 0) {
+                const bounds = [];
+                ocorrenciasFiltradas.forEach(o => {
+                    const lat = parseFloat(o.latitude);
+                    const lng = parseFloat(o.longitude);
 
-function textoStatus(status) {
-    const nomes = { nova: "NOVA OCORRÊNCIA", atendimento: "EM ATENDIMENTO", socorro: "SOCORRO ACIONADO" };
-    return nomes[status] || "EM ANDAMENTO";
-}
-</script>
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        bounds.push([lat, lng]);
 
+                        const marker = L.marker([lat, lng]);
+                        marker.bindPopup(`
+                            <div class="popup-content">
+                                <h4>${o.nome || 'Sem nome'}</h4>
+                                <p><strong>Placa:</strong> ${o.placa || '-'}</p>
+                                <p><strong>Rodovia:</strong> ${o.rodovia || '-'}</p>
+                                <p><strong>Problema:</strong> ${o.problema || '-'}</p>
+                                <span class="badge badge-${o.status}">${o.status.toUpperCase()}</span>
+                            </div>
+                        `);
+                        markersGroup.addLayer(marker);
+                    }
+                });
+
+                if (bounds.length > 0 && !termoBusca) {
+                    map.fitBounds(bounds, { padding: [50, 50] });
+                }
+            }
+        }
+    </script>
 </body>
 </html>

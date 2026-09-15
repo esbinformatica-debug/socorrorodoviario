@@ -1,509 +1,224 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Central de Socorro Rodoviário</title>
-
+    <title>Painel Geral de Ocorrências - Sinal Amarelo</title>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: Arial, sans-serif;
-            background: #eef1f5;
-            color: #202733;
-        }
-
-        /* HEADER */
-        header {
-            height: 70px;
-            background: #14213d;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 25px;
-        }
-
-        header h1 {
-            font-size: 20px;
-        }
-
-        .online {
-            color: #55efc4;
-            font-size: 14px;
-        }
-
-        /* CONTAINER */
-        .container {
-            padding: 20px;
-        }
-
-        /* ESTATÍSTICAS */
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .stat {
-            background: white;
-            border-radius: 10px;
-            padding: 18px;
-            box-shadow: 0 2px 8px rgba(0,0,0,.06);
-        }
-
-        .stat span {
-            color: #777;
-            font-size: 13px;
-        }
-
-        .stat strong {
-            display: block;
-            font-size: 28px;
-            margin-top: 7px;
-        }
-
-        /* ÁREA PRINCIPAL */
-        .main {
-            display: grid;
-            grid-template-columns: 380px 1fr;
-            gap: 20px;
-        }
-
-        .panel {
-            background: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 2px 8px rgba(0,0,0,.06);
-        }
-
-        .panel-title {
-            padding: 18px;
-            border-bottom: 1px solid #eee;
-            font-size: 17px;
-            font-weight: bold;
-        }
-
-        /* LISTA */
-        .ocorrencia {
-            padding: 16px;
-            border-bottom: 1px solid #eee;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .ocorrencia:hover {
-            background: #f5f8fc;
-        }
-
-        .ocorrencia.selecionada {
-            background: #eaf3ff;
-            border-left: 4px solid #2878d7;
-        }
-
-        .id {
-            font-weight: bold;
-            color: #2878d7;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .hora-chamado {
-            font-size: 12px;
-            color: #777;
-            font-weight: normal;
-        }
-
-        .motorista {
-            font-weight: bold;
-            margin-top: 7px;
-        }
-
-        .local {
-            color: #777;
-            font-size: 13px;
-            margin-top: 6px;
-        }
-
-        .status {
-            display: inline-block;
-            margin-top: 8px;
-            padding: 5px 9px;
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: bold;
-        }
-
-        .nova { background: #ffe3e5; color: #d63031; }
-        .atendimento { background: #fff1d6; color: #b9770e; }
-        .socorro { background: #dfeeff; color: #2469ad; }
-        .encerrada { background: #dff7e8; color: #218c4a; }
-
-        /* DETALHES */
-        .detalhes {
-            padding: 22px;
-        }
-
-        .detalhes h2 {
-            margin-bottom: 20px;
-        }
-
-        .dados {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-        }
-
-        .campo {
-            background: #f6f7f9;
-            padding: 14px;
-            border-radius: 8px;
-        }
-
-        .campo small {
-            display: block;
-            color: #777;
-            margin-bottom: 5px;
-        }
-
-        .campo strong {
-            font-size: 15px;
-        }
-
-        .campo.destaque {
-            background: #e8f0fe;
-            border: 1px solid #cce0ff;
-        }
-
-        /* MAPA VISUAL */
-        .mapa {
-            height: 180px;
-            background: #dfe7dc;
-            border-radius: 10px;
-            margin-top: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .estrada {
-            position: absolute;
-            width: 120%;
-            height: 60px;
-            background: #555;
-            transform: rotate(-15deg);
-        }
-
-        .carro {
-            position: relative;
-            z-index: 2;
-            font-size: 45px;
-        }
-
-        .mapa-label {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            background: white;
-            padding: 9px;
-            border-radius: 6px;
-            font-size: 12px;
-            z-index: 3;
-            font-weight: bold;
-        }
-
-        /* BOTÕES */
-        .botoes {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-            flex-wrap: wrap;
-        }
-
-        button {
-            border: none;
-            padding: 12px 16px;
-            border-radius: 7px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: opacity 0.2s;
-        }
-
-        button:hover {
-            opacity: 0.9;
-        }
-
-        .btn-assumir { background: #2878d7; color: white; }
-        .btn-socorro { background: #27ae60; color: white; }
-        .btn-mapa { background: #e9edf2; color: #333; }
-        .btn-encerrar { background: #e63946; color: white; }
-
-        @media(max-width: 900px) {
-            .stats { grid-template-columns: repeat(2, 1fr); }
-            .main { grid-template-columns: 1fr; }
-        }
-
-        @media(max-width: 600px) {
-            .dados { grid-template-columns: 1fr; }
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f4f6f9; color: #333; display: flex; flex-direction: column; height: 100vh; }
+        header { background-color: #1e293b; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .stats-bar { display: flex; gap: 15px; background: white; padding: 15px 20px; border-bottom: 1px solid #e2e8f0; }
+        .stat-card { flex: 1; padding: 10px 15px; border-radius: 8px; background: #f8fafc; border: 1px solid #cbd5e1; text-align: center; }
+        .stat-card .num { font-size: 20px; font-weight: bold; }
+        .main-container { display: flex; flex: 1; overflow: hidden; }
+        .panel { flex: 1; border-right: 1px solid #e2e8f0; background: white; display: flex; flex-direction: column; }
+        .panel-title { padding: 15px; font-weight: bold; border-bottom: 1px solid #e2e8f0; background: #f8fafc; }
+        #listaOcorrencias { flex: 1; overflow-y: auto; }
+        .ocorrencia { padding: 15px; border-bottom: 1px solid #e2e8f0; cursor: pointer; transition: background 0.2s; }
+        .ocorrencia:hover { background: #f1f5f9; }
+        .ocorrencia.selecionada { background: #e2e8f0; border-left: 4px solid #0284c7; }
+        .ocorrencia .id { font-weight: bold; display: flex; justify-content: space-between; }
+        .ocorrencia .motorista { color: #0f172a; font-weight: 600; font-size: 15px; margin-top: 4px; }
+        .ocorrencia .local { font-size: 13px; color: #64748b; margin-top: 2px; }
+        .status { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; margin-top: 5px; }
+        .status-nova { background: #fef3c7; color: #d97706; }
+        .status-atendimento { background: #dbeafe; color: #2563eb; }
+        .status-socorro { background: #ffedd5; color: #ea580c; }
+        .status-encerrada { background: #f1f5f9; color: #64748b; }
+        .details-panel { flex: 2; padding: 20px; background: white; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; }
+        .detail-row { display: flex; margin-bottom: 10px; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; }
+        .detail-label { width: 150px; font-weight: bold; color: #64748b; }
+        .detail-value { flex: 1; color: #0f172a; }
     </style>
 </head>
-
 <body>
 
-<header>
-    <h1>🆘 Central de Socorro Rodoviário</h1>
-    <div class="online">🟢 Operador online</div>
-</header>
+    <header>
+        <h2>Painel Principal de Ocorrências</h2>
+    </header>
 
-<div class="container">
-
-    <!-- ESTATÍSTICAS -->
-    <div class="stats">
-        <div class="stat">
-            <span>Novas ocorrências</span>
-            <strong id="totalNovas">0</strong>
-        </div>
-        <div class="stat">
-            <span>Em atendimento</span>
-            <strong id="totalAtendimento">0</strong>
-        </div>
-        <div class="stat">
-            <span>Socorro acionado</span>
-            <strong id="totalSocorro">0</strong>
-        </div>
-        <div class="stat">
-            <span>Total</span>
-            <strong id="totalOcorrencias">0</strong>
-        </div>
+    <div class="stats-bar">
+        <div class="stat-card">Novas: <span class="num" id="totalNovas">0</span></div>
+        <div class="stat-card">Em Atendimento: <span class="num" id="totalAtendimento">0</span></div>
+        <div class="stat-card">Socorro A caminho: <span class="num" id="totalSocorro">0</span></div>
+        <div class="stat-card">Total: <span class="num" id="totalOcorrencias">0</span></div>
     </div>
 
-    <!-- PAINEL PRINCIPAL -->
-    <div class="main">
-
-        <!-- LISTA DE OCORRÊNCIAS -->
+    <div class="main-container">
         <div class="panel">
             <div class="panel-title">Ocorrências</div>
-            <div id="listaOcorrencias">
-                <p style="padding:20px; color:#777;">Aguardando ocorrências...</p>
+            <div style="padding: 10px 16px; border-bottom: 1px solid #eee;">
+                <input type="text" id="campoBusca" placeholder="🔍 Buscar por Nome ou Placa..." style="width:100%; padding:8px; border-radius:6px; border:1px solid #ccc;">
             </div>
+            <div id="listaOcorrencias"></div>
         </div>
 
-        <!-- DETALHES DA OCORRÊNCIA -->
-        <div class="panel">
-            <div class="detalhes">
-                <h2 id="titulo">Selecione uma ocorrência</h2>
-
-                <div id="areaDetalhes" style="display:none;">
-                    <div class="dados">
-                        <div class="campo destaque">
-                            <small>Data/Hora do Chamado</small>
-                            <strong id="dataCriacao">🕒 -</strong>
-                        </div>
-                        <div class="campo"><small>Motorista</small><strong id="nome">-</strong></div>
-                        <div class="campo"><small>Placa</small><strong id="placa">-</strong></div>
-                        <div class="campo"><small>Modelo</small><strong id="modelo">-</strong></div>
-                        <div class="campo"><small>Número de Ocupantes</small><strong id="n_ocupantes">-</strong></div>
-                        <div class="campo"><small>Telefone</small><strong id="telefone">-</strong></div>
-                        <div class="campo"><small>Rodovia</small><strong id="rodovia">-</strong></div>
-                        <div class="campo"><small>Sentido</small><strong id="sentido">-</strong></div>
-                        <div class="campo"><small>Problema</small><strong id="problema">-</strong></div>
-                        <div class="campo"><small>Latitude</small><strong id="latitude">-</strong></div>
-                        <div class="campo"><small>Longitude</small><strong id="longitude">-</strong></div>
-                    </div>
-
-                    <div class="mapa">
-                        <div class="mapa-label">📍 Localização do motorista</div>
-                        <div class="estrada"></div>
-                        <div class="carro">🚗</div>
-                    </div>
-
-                    <div class="botoes">
-                        <button class="btn-assumir" onclick="assumirAtendimento()">👨‍💼 Assumir atendimento</button>
-                        <button class="btn-socorro" onclick="acionarSocorro()">🚑 Acionar socorro</button>
-                        <button class="btn-mapa" onclick="abrirMapa()">📍 Abrir no Google Maps</button>
-                        <button class="btn-encerrar" onclick="encerrarOcorrencia()">✓ Encerrar</button>
+        <div class="details-panel">
+            <h3 id="titulo">Selecione uma ocorrência</h3>
+            <div id="areaDetalhes" style="display: none;">
+                <div class="detail-row">
+                    <div class="detail-label">Data e Hora:</div>
+                    <div class="detail-value" id="dataCriacao">-</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Motorista:</div>
+                    <div class="detail-value" id="nome">-</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Placa:</div>
+                    <div class="detail-value" id="placa">-</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Modelo:</div>
+                    <div class="detail-value" id="modelo">-</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Nº Ocupantes:</div>
+                    <div class="detail-value" id="n_ocupantes">-</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Telefone:</div>
+                    <div class="detail-value" id="telefone">-</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Rodovia:</div>
+                    <div class="detail-value" id="rodovia">-</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Sentido:</div>
+                    <div class="detail-value" id="sentido">-</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Problema:</div>
+                    <div class="detail-value" id="problema">-</div>
+                </div>
+                <div class="detail-row">
+                    <div class="detail-label">Coordenadas:</div>
+                    <div class="detail-value">
+                        Lat: <span id="latitude">-</span> | Long: <span id="longitude">-</span>
                     </div>
                 </div>
             </div>
         </div>
-
     </div>
-</div>
 
-<script type="module">
-import { escutarOcorrencias, alterarStatus } from "./firebase.js";
+    <script type="module">
+        import { escutarOcorrencias } from "./firebase.js";
 
-let ocorrencias = [];
-let selecionada = null;
+        let ocorrencias = [];
+        let selecionada = null;
+        let filtroBusca = "";
 
-// Escuta em tempo real do Firestore
-escutarOcorrencias((lista) => {
-    ocorrencias = lista;
-    atualizarPainel();
-});
-
-// Função auxiliar para converter o Timestamp do Firestore para texto
-function formatarDataHora(timestamp) {
-    if (!timestamp) return "Aguardando...";
-    
-    // Se for objeto Timestamp do Firestore
-    if (typeof timestamp.toDate === 'function') {
-        return timestamp.toDate().toLocaleString('pt-BR');
-    }
-    
-    // Se for objeto Date ou String ISO
-    const data = new Date(timestamp);
-    if (!isNaN(data.getTime())) {
-        return data.toLocaleString('pt-BR');
-    }
-
-    return "-";
-}
-
-// Extrai somente as horas (HH:MM) para a lista
-function formatarHoraApenas(timestamp) {
-    if (!timestamp) return "";
-    let data;
-    if (typeof timestamp.toDate === 'function') {
-        data = timestamp.toDate();
-    } else {
-        data = new Date(timestamp);
-    }
-    if (isNaN(data.getTime())) return "";
-    return data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-}
-
-function atualizarPainel() {
-    // Atualiza Estatísticas
-    document.getElementById("totalNovas").innerText = ocorrencias.filter(o => o.status === "nova").length;
-    document.getElementById("totalAtendimento").innerText = ocorrencias.filter(o => o.status === "atendimento").length;
-    document.getElementById("totalSocorro").innerText = ocorrencias.filter(o => o.status === "socorro").length;
-    document.getElementById("totalOcorrencias").innerText = ocorrencias.length;
-
-    // Renderiza Lista
-    const listaElement = document.getElementById("listaOcorrencias");
-    listaElement.innerHTML = "";
-
-    if (ocorrencias.length === 0) {
-        listaElement.innerHTML = `<p style="padding:20px; color:#777;">Nenhuma ocorrência recebida.</p>`;
-        return;
-    }
-
-    ocorrencias.forEach(o => {
-        const div = document.createElement("div");
-        div.className = `ocorrencia ${o.id === selecionada ? 'selecionada' : ''}`;
-
-        const hora = formatarHoraApenas(o.criadoEm);
-
-        div.innerHTML = `
-            <div class="id">
-                <span>#${o.id.substring(0, 8)}</span>
-                <span class="hora-chamado">🕒 ${hora}</span>
-            </div>
-            <div class="motorista">${o.nome || "Motorista não identificado"}</div>
-            <div>🚗 ${o.placa || "-"}</div>
-            <div class="local">📍 ${o.rodovia || "Rodovia não informada"}</div>
-            <div class="status ${classeStatus(o.status)}">${textoStatus(o.status)}</div>
-        `;
-
-        div.onclick = () => {
-            selecionada = o.id;
-            mostrarDetalhes(o);
+        escutarOcorrencias(function(lista) {
+            ocorrencias = lista;
             atualizarPainel();
-        };
+            if (selecionada) {
+                const itemAtualizado = ocorrencias.find(o => o.id === selecionada);
+                if (itemAtualizado) mostrarDetalhes(itemAtualizado);
+            }
+        });
 
-        listaElement.appendChild(div);
-    });
-}
+        document.getElementById("campoBusca").addEventListener("input", (e) => {
+            filtroBusca = e.target.value.toLowerCase().trim();
+            atualizarPainel();
+        });
 
-function mostrarDetalhes(o) {
-    document.getElementById("titulo").innerText = "Ocorrência #" + o.id.substring(0, 8);
-    document.getElementById("areaDetalhes").style.display = "block";
+        function formatarDataHora(timestamp) {
+            if (!timestamp) return "Aguardando...";
+            if (typeof timestamp.toDate === 'function') return timestamp.toDate().toLocaleString('pt-BR');
+            const data = new Date(timestamp);
+            return !isNaN(data.getTime()) ? data.toLocaleString('pt-BR') : "-";
+        }
 
-    // Exibição formatada da Data e Hora do Chamado
-    document.getElementById("dataCriacao").innerText = "🕒 " + formatarDataHora(o.criadoEm);
+        function formatarHoraApenas(timestamp) {
+            if (!timestamp) return "";
+            const data = typeof timestamp.toDate === 'function' ? timestamp.toDate() : new Date(timestamp);
+            return isNaN(data.getTime()) ? "" : data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        }
 
-    document.getElementById("nome").innerText = o.nome || "-";
-    document.getElementById("placa").innerText = o.placa || "-";
-    document.getElementById("modelo").innerText = o.modelo || "-";
-    document.getElementById("n_ocupantes").innerText = o.ocupantes || o.n_ocupantes || o.n_ocupante || "-";
-    document.getElementById("telefone").innerText = o.telefone || "-";
-    document.getElementById("rodovia").innerText = o.rodovia || "-";
-    document.getElementById("sentido").innerText = o.sentido || "-";
-    document.getElementById("problema").innerText = o.problema || "-";
-    document.getElementById("latitude").innerText = o.latitude !== null && o.latitude !== undefined ? o.latitude : "-";
-    document.getElementById("longitude").innerText = o.longitude !== null && o.longitude !== undefined ? o.longitude : "-";
-}
+        function classeStatus(status) {
+            switch(status) {
+                case "nova": return "status-nova";
+                case "atendimento": return "status-atendimento";
+                case "socorro": return "status-socorro";
+                default: return "status-encerrada";
+            }
+        }
 
-function obterAtual() {
-    return ocorrencias.find(o => o.id === selecionada);
-}
+        function textoStatus(status) {
+            switch(status) {
+                case "nova": return "Nova";
+                case "atendimento": return "Em Atendimento";
+                case "socorro": return "Socorro Enviado";
+                default: return "Encerrada";
+            }
+        }
 
-// Funções globais expostas para os botões do HTML
-window.assumirAtendimento = async function() {
-    const o = obterAtual();
-    if (!o) return alert("Selecione uma ocorrência primeiro.");
-    await alterarStatus(o.id, "atendimento", "Operador");
-};
+        function atualizarPainel() {
+            const ocorrenciasFiltradas = ocorrencias.filter(o => {
+                const nome = (o.nome || "").toLowerCase();
+                const placa = (o.placa || "").toLowerCase();
+                return nome.includes(filtroBusca) || placa.includes(filtroBusca);
+            });
 
-window.acionarSocorro = async function() {
-    const o = obterAtual();
-    if (!o) return alert("Selecione uma ocorrência primeiro.");
-    await alterarStatus(o.id, "socorro", "Operador");
-};
+            document.getElementById("totalNovas").innerText = ocorrencias.filter(o => o.status === "nova").length;
+            document.getElementById("totalAtendimento").innerText = ocorrencias.filter(o => o.status === "atendimento").length;
+            document.getElementById("totalSocorro").innerText = ocorrencias.filter(o => o.status === "socorro").length;
+            document.getElementById("totalOcorrencias").innerText = ocorrencias.length;
 
-window.encerrarOcorrencia = async function() {
-    const o = obterAtual();
-    if (!o) return alert("Selecione uma ocorrência primeiro.");
-    if (confirm("Deseja encerrar esta ocorrência?")) {
-        await alterarStatus(o.id, "encerrada", "Operador");
-    }
-};
+            const lista = document.getElementById("listaOcorrencias");
+            lista.innerHTML = "";
 
-window.abrirMapa = function() {
-    const o = obterAtual();
-    if (!o) return;
+            if (ocorrenciasFiltradas.length === 0) {
+                lista.innerHTML = `<p style="padding:20px; color:#777;">Nenhuma ocorrência encontrada.</p>`;
+                return;
+            }
 
-    if (!o.latitude || !o.longitude) {
-        alert("Coordenadas GPS indisponíveis para esta ocorrência.");
-        return;
-    }
+            ocorrenciasFiltradas.forEach(ocorrencia => {
+                const div = document.createElement("div");
+                div.className = `ocorrencia ${ocorrencia.id === selecionada ? 'selecionada' : ''}`;
+                const hora = formatarHoraApenas(ocorrencia.criadoEm);
 
-    const url = `https://www.google.com/maps/search/?api=1&query=${o.latitude},${o.longitude}`;
-    window.open(url, "_blank");
-};
+                div.innerHTML = `
+                    <div class="id">
+                        <span>#${ocorrencia.id.substring(0,8)}</span>
+                        <span style="font-size:12px; color:#777; font-weight:normal;">🕒 ${hora}</span>
+                    </div>
+                    <div class="motorista">${ocorrencia.nome || "Sem nome"}</div>
+                    <div style="font-size:13px;">🚗 ${ocorrencia.placa || "-"}</div>
+                    <div class="local">📍 ${ocorrencia.rodovia || "Rodovia não informada"}</div>
+                    <div class="status ${classeStatus(ocorrencia.status)}">
+                        ${textoStatus(ocorrencia.status)}
+                    </div>
+                `;
 
-function textoStatus(status) {
-    const nomes = {
-        nova: "NOVA",
-        atendimento: "EM ATENDIMENTO",
-        socorro: "SOCORRO ACIONADO",
-        encerrada: "ENCERRADA"
-    };
-    return nomes[status] || "DESCONHECIDO";
-}
+                div.onclick = function() {
+                    selecionada = ocorrencia.id;
+                    mostrarDetalhes(ocorrencia);
+                    atualizarPainel();
+                };
 
-function classeStatus(status) {
-    const classes = {
-        nova: "nova",
-        atendimento: "atendimento",
-        socorro: "socorro",
-        encerrada: "encerrada"
-    };
-    return classes[status] || "";
-}
-</script>
+                lista.appendChild(div);
+            });
+        }
 
+        function mostrarDetalhes(o) {
+            document.getElementById("titulo").innerText = "Ocorrência #" + o.id.substring(0,8);
+            document.getElementById("areaDetalhes").style.display = "block";
+
+            document.getElementById("dataCriacao").innerText = formatarDataHora(o.criadoEm);
+            document.getElementById("nome").innerText = o.nome || "-";
+            document.getElementById("placa").innerText = o.placa || "-";
+            document.getElementById("modelo").innerText = o.modelo || "-";
+            document.getElementById("n_ocupantes").innerText = o.ocupantes || o.n_ocupantes || o.n_ocupante || "-";
+            document.getElementById("telefone").innerText = o.telefone || "-";
+            document.getElementById("rodovia").innerText = o.rodovia || "-";
+            document.getElementById("sentido").innerText = o.sentido || "-";
+            document.getElementById("problema").innerText = o.problema || "-";
+            document.getElementById("latitude").innerText = o.latitude ?? "-";
+            document.getElementById("longitude").innerText = o.longitude ?? "-";
+        }
+    </script>
 </body>
 </html>
