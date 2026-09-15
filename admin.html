@@ -1,0 +1,283 @@
+<!-- Importação dos Scripts do Firebase no formato Web Standalone -->
+<script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore-compat.js"></script>
+
+<script>
+// Inicialização do Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyDCqAkO1L5935U1E2a2PW5HkpZJy0Gauwc",
+    authDomain: "derchamados.firebaseapp.com",
+    projectId: "derchamados",
+    storageBucket: "derchamados.firebasestorage.app",
+    messagingSenderId: "922256232360",
+    appId: "1:922256232360:web:a0492c02fcbbf6a7dd579d",
+    measurementId: "G-0BNGCJ6NSH"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+let todasOcorrencias = [];
+let ocorrenciasFiltradas = [];
+
+// LOGIN
+document.getElementById("btnLogin").addEventListener("click", () => {
+    const user = document.getElementById("adminUser").value.trim();
+    const pass = document.getElementById("adminPass").value.trim();
+
+    if (user === "admin" && pass === "admin123") {
+        document.getElementById("loginScreen").style.display = "none";
+        document.getElementById("adminPanel").style.display = "block";
+        iniciarEscuta();
+    } else {
+        alert("Usuário ou senha inválidos!");
+    }
+});
+
+document.getElementById("btnLogout").addEventListener("click", () => {
+    location.reload();
+});
+
+// ESCUTA EM TEMPO REAL
+function iniciarEscuta() {
+    db.collection("ocorrencias")
+      .orderBy("criadoEm", "desc")
+      .onSnapshot((snapshot) => {
+          todasOcorrencias = [];
+          snapshot.forEach((doc) => {
+              todasOcorrencias.push({
+                  id: doc.id,
+                  ...doc.data()
+              });
+          });
+          aplicarFiltros();
+      }, (erro) => {
+          console.error("Erro no listener de ocorrências:", erro);
+      });
+}
+
+// FILTRAGEM
+function aplicarFiltros() {
+    const dInicio = document.getElementById("filtDataInicio").value;
+    const dFim = document.getElementById("filtDataFim").value;
+    const rodovia = document.getElementById("filtRodovia").value.toLowerCase().trim();
+
+    ocorrenciasFiltradas = todasOcorrencias.filter(o => {
+        let okData = true;
+        let okRodovia = true;
+
+        let dataItem = null;
+        if (o.criadoEm && typeof o.criadoEm.toDate === 'function') {
+            dataItem = o.criadoEm.toDate();
+        } else if (o.criadoEm) {
+            dataItem = new Date(o.criadoEm);
+        }
+
+        if (dataItem) {
+            if (dInicio) {
+                const dtStart = new Date(dInicio + "T00:00:00");
+                if (dataItem < dtStart) okData = false;
+            }
+            if (dFim) {
+                const dtEnd = new Date(dFim + "T23:59:59");
+                if (dataItem > dtEnd) okData = false;
+            }
+        }
+
+        if (rodovia) {
+            const rItem = (o.rodovia || "").toLowerCase();
+            if (!rItem.includes(rodovia)) okRodovia = false;
+        }
+
+        return okData && okRodovia;
+    });
+
+    renderizarTabela(ocorrenciasFiltradas);
+}
+
+document.getElementById("btnFiltrar").addEventListener("click", aplicarFiltros);
+document.getElementById("btnLimparFiltros").addEventListener("click", () => {
+    document.getElementById("filtDataInicio").value = "";
+    document.getElementById("filtDataFim").value = "";
+    document.getElementById("filtRodovia").value = "";
+    aplicarFiltros();
+});
+
+// RENDERIZAÇÃO DA TABELA
+function renderizarTabela(lista) {
+    const tbody = document.getElementById("tabelaCorpo");
+    tbody.innerHTML = "";
+
+    if (lista.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;">Nenhum chamado encontrado.</td></tr>`;
+        return;
+    }
+
+    lista.forEach(o => {
+        let dtTexto = "-";
+        if (o.criadoEm && typeof o.criadoEm.toDate === 'function') {
+            dtTexto = o.criadoEm.toDate().toLocaleString('pt-BR');
+        } else if (o.criadoEm) {
+            dtTexto = new Date(o.criadoEm).toLocaleString('pt-BR');
+        }
+
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td>${dtTexto}</td>
+            <td>${o.nome || "-"}</td>
+            <td>${o.placa || "-"}</td>
+            <td>${o.rodovia || "-"}</td>
+            <td>${o.sentido || "-"}</td>
+            <td>${o.problema || "-"}</td>
+            <td><strong>${(o.status || "nova").toUpperCase()}</strong></td>
+            <td>
+                <button class="btn-edit" data-id="${o.id}">✏️ Editar</button>
+                <button class="btn-delete" data-id="${o.id}">🗑️ Excluir</button>
+            </td>
+        `;
+
+        tr.querySelector(".btn-edit").addEventListener("click", () => abrirModalEdicao(o));
+        tr.querySelector(".btn-delete").addEventListener("click", () => deletar(o.id));
+
+        tbody.appendChild(tr);
+    });
+}
+
+// MANUTENÇÃO (MODAL)
+const modal = document.getElementById("modalChamado");
+const form = document.getElementById("formChamado");
+
+document.getElementById("btnNovoChamado").addEventListener("click", () => {
+    form.reset();
+    document.getElementById("chamadoId").value = "";
+    document.getElementById("modalTitulo").innerText = "Novo Chamado Manual";
+    modal.style.display = "flex";
+});
+
+document.getElementById("btnFecharModal").addEventListener("click", () => {
+    modal.style.display = "none";
+});
+
+function abrirModalEdicao(o) {
+    document.getElementById("chamadoId").value = o.id;
+    document.getElementById("mNome").value = o.nome || "";
+    document.getElementById("mPlaca").value = o.placa || "";
+    document.getElementById("mModelo").value = o.modelo || "";
+    document.getElementById("mTelefone").value = o.telefone || "";
+    document.getElementById("mRodovia").value = o.rodovia || "";
+    document.getElementById("mSentido").value = o.sentido || "Norte";
+    document.getElementById("mProblema").value = o.problema || "";
+    document.getElementById("mStatus").value = o.status || "nova";
+
+    document.getElementById("modalTitulo").innerText = "Editar Chamado #" + o.id.substring(0,6);
+    modal.style.display = "flex";
+}
+
+form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const id = document.getElementById("chamadoId").value;
+    const dados = {
+        nome: document.getElementById("mNome").value,
+        placa: document.getElementById("mPlaca").value,
+        modelo: document.getElementById("mModelo").value,
+        telefone: document.getElementById("mTelefone").value,
+        rodovia: document.getElementById("mRodovia").value,
+        sentido: document.getElementById("mSentido").value,
+        problema: document.getElementById("mProblema").value,
+        status: document.getElementById("mStatus").value,
+        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    try {
+        if (id) {
+            await db.collection("ocorrencias").doc(id).update(dados);
+            alert("Chamado atualizado!");
+        } else {
+            dados.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
+            await db.collection("ocorrencias").add(dados);
+            alert("Chamado inserido!");
+        }
+        modal.style.display = "none";
+    } catch (err) {
+        console.error(err);
+        alert("Erro ao salvar chamado.");
+    }
+});
+
+async function deletar(id) {
+    if (confirm("Tem certeza que deseja excluir permanentemente este chamado?")) {
+        try {
+            await db.collection("ocorrencias").doc(id).delete();
+            alert("Chamado excluído com sucesso.");
+        } catch (err) {
+            console.error(err);
+            alert("Erro ao excluir chamado.");
+        }
+    }
+}
+
+// EXPORTAÇÃO EXCEL
+document.getElementById("btnExportExcel").addEventListener("click", () => {
+    if (ocorrenciasFiltradas.length === 0) return alert("Nenhum dado para exportar!");
+
+    const dadosExcel = ocorrenciasFiltradas.map(o => {
+        let dt = "-";
+        if (o.criadoEm && typeof o.criadoEm.toDate === 'function') dt = o.criadoEm.toDate().toLocaleString('pt-BR');
+        return {
+            ID: o.id,
+            DataHora: dt,
+            Motorista: o.nome || "",
+            Placa: o.placa || "",
+            Modelo: o.modelo || "",
+            Telefone: o.telefone || "",
+            Rodovia: o.rodovia || "",
+            Sentido: o.sentido || "",
+            Problema: o.problema || "",
+            Status: o.status || "",
+            Latitude: o.latitude || "",
+            Longitude: o.longitude || ""
+        };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(dadosExcel);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Chamados");
+    XLSX.writeFile(wb, "chamados_der_export.xlsx");
+});
+
+// EXPORTAÇÃO PDF
+document.getElementById("btnExportPDF").addEventListener("click", () => {
+    if (ocorrenciasFiltradas.length === 0) return alert("Nenhum dado para exportar!");
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('l', 'mm', 'a4');
+
+    doc.setFontSize(16);
+    doc.text("Relatório de Chamados - DER SP", 14, 15);
+
+    const cabecalhos = [["Data/Hora", "Motorista", "Placa", "Rodovia", "Sentido", "Problema", "Status"]];
+    const linhas = ocorrenciasFiltradas.map(o => {
+        let dt = "-";
+        if (o.criadoEm && typeof o.criadoEm.toDate === 'function') dt = o.criadoEm.toDate().toLocaleString('pt-BR');
+        return [
+            dt,
+            o.nome || "-",
+            o.placa || "-",
+            o.rodovia || "-",
+            o.sentido || "-",
+            o.problema || "-",
+            (o.status || "-").toUpperCase()
+        ];
+    });
+
+    doc.autoTable({
+        head: cabecalhos,
+        body: linhas,
+        startY: 22,
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [20, 33, 61] }
+    });
+
+    doc.save("chamados_der_export.pdf");
+});
+</script>
