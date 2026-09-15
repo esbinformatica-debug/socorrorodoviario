@@ -1,266 +1,29 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel Administrativo - Central DER</title>
+<!-- Importação dos Scripts do Firebase no formato Web Standalone -->
+<script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore-compat.js"></script>
 
-    <!-- Script do SheetJS para Exportar Excel -->
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-    
-    <!-- Scripts do jsPDF e jsPDF-AutoTable para Exportar PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script>
+// Inicialização do Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyDCqAkO1L5935U1E2a2PW5HkpZJy0Gauwc",
+    authDomain: "derchamados.firebaseapp.com",
+    projectId: "derchamados",
+    storageBucket: "derchamados.firebasestorage.app",
+    messagingSenderId: "922256232360",
+    appId: "1:922256232360:web:a0492c02fcbbf6a7dd579d",
+    measurementId: "G-0BNGCJ6NSH"
+};
 
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: Arial, sans-serif; }
-        body { background: #eef1f5; color: #202733; }
-
-        /* TELA DE LOGIN */
-        #loginScreen {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background: #14213d;
-        }
-        .login-card {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            width: 320px;
-            text-align: center;
-        }
-        .login-card h2 { margin-bottom: 20px; color: #14213d; }
-        .login-card input {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 12px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-        }
-        .login-card button {
-            width: 100%;
-            padding: 10px;
-            background: #2878d7;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-
-        /* PAINEL PRINCIPAL */
-        #adminPanel { display: none; }
-        header {
-            height: 70px;
-            background: #14213d;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 25px;
-        }
-        .container { padding: 20px; }
-
-        /* CARD DE FILTROS & AÇÕES */
-        .card-actions {
-            background: white;
-            padding: 18px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            align-items: flex-end;
-            justify-content: space-between;
-        }
-        .filter-group { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
-        .filter-item { display: flex; flex-direction: column; gap: 5px; }
-        .filter-item label { font-size: 12px; font-weight: bold; color: #555; }
-        .filter-item input, .filter-item select { padding: 8px; border: 1px solid #ccc; border-radius: 5px; }
-
-        .btn { padding: 9px 15px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-add { background: #27ae60; color: white; }
-        .btn-excel { background: #1e7e34; color: white; }
-        .btn-pdf { background: #d63031; color: white; }
-        .btn-logout { background: #777; color: white; }
-        .btn:hover { opacity: 0.85; }
-
-        /* TABELA DE CHAMADOS */
-        .table-container { background: white; border-radius: 10px; overflow-x: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-        table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: left; }
-        th, td { padding: 12px 15px; border-bottom: 1px solid #eee; }
-        th { background: #f8fafc; color: #475569; }
-        tr:hover { background: #f1f5f9; }
-
-        .btn-edit { background: #f39c12; color: white; padding: 5px 10px; border-radius: 3px; border: none; cursor: pointer; }
-        .btn-delete { background: #e74c3c; color: white; padding: 5px 10px; border-radius: 3px; border: none; cursor: pointer; margin-left: 5px; }
-
-        /* MODAL DE CADASTRO/EDIÇÃO */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5);
-            justify-content: center; align-items: center;
-            z-index: 2000;
-        }
-        .modal-content {
-            background: white; padding: 25px; border-radius: 10px;
-            width: 450px; max-width: 90%; max-height: 90vh; overflow-y: auto;
-        }
-        .modal-content h3 { margin-bottom: 15px; }
-        .form-group { margin-bottom: 12px; }
-        .form-group label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 4px; }
-        .form-group input, .form-group select, .form-group textarea {
-            width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 5px;
-        }
-        .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; }
-    </style>
-</head>
-<body>
-
-<!-- TELA DE LOGIN -->
-<div id="loginScreen">
-    <div class="login-card">
-        <h2>🔒 Login Admin</h2>
-        <input type="text" id="adminUser" placeholder="Usuário (admin)">
-        <input type="password" id="adminPass" placeholder="Senha (admin123)">
-        <button id="btnLogin">Entrar</button>
-    </div>
-</div>
-
-<!-- PAINEL ADMINISTRATIVO -->
-<div id="adminPanel">
-    <header>
-        <h1>🛠️ Painel de Administração - DER Chamados</h1>
-        <button class="btn btn-logout" id="btnLogout">Sair</button>
-    </header>
-
-    <div class="container">
-        <!-- BARRA DE FILTROS E EXPORTAÇÃO -->
-        <div class="card-actions">
-            <div class="filter-group">
-                <div class="filter-item">
-                    <label>Data Inicial:</label>
-                    <input type="date" id="filtDataInicio">
-                </div>
-                <div class="filter-item">
-                    <label>Data Final:</label>
-                    <input type="date" id="filtDataFim">
-                </div>
-                <div class="filter-item">
-                    <label>Rodovia:</label>
-                    <input type="text" id="filtRodovia" placeholder="Ex: SP-060">
-                </div>
-                <button class="btn btn-add" id="btnFiltrar">Filtrar</button>
-                <button class="btn" style="background:#95a5a6; color:white;" id="btnLimparFiltros">Limpar</button>
-            </div>
-
-            <div class="filter-group">
-                <button class="btn btn-add" id="btnNovoChamado">➕ Novo Chamado</button>
-                <button class="btn btn-excel" id="btnExportExcel">📊 Excel</button>
-                <button class="btn btn-pdf" id="btnExportPDF">📄 PDF</button>
-            </div>
-        </div>
-
-        <!-- TABELA -->
-        <div class="table-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Data/Hora</th>
-                        <th>Motorista</th>
-                        <th>Placa</th>
-                        <th>Rodovia</th>
-                        <th>Sentido</th>
-                        <th>Problema</th>
-                        <th>Status</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="tabelaCorpo">
-                    <tr><td colspan="8" style="text-align:center;">Carregando ocorrências...</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<!-- MODAL MANUTENÇÃO (INSERIR / EDITAR) -->
-<div class="modal" id="modalChamado">
-    <div class="modal-content">
-        <h3 id="modalTitulo">Novo Chamado</h3>
-        <form id="formChamado">
-            <input type="hidden" id="chamadoId">
-
-            <div class="form-group">
-                <label>Nome do Motorista:</label>
-                <input type="text" id="mNome" required>
-            </div>
-            <div class="form-group">
-                <label>Placa:</label>
-                <input type="text" id="mPlaca" style="text-transform:uppercase;" required>
-            </div>
-            <div class="form-group">
-                <label>Modelo:</label>
-                <input type="text" id="mModelo">
-            </div>
-            <div class="form-group">
-                <label>Telefone:</label>
-                <input type="text" id="mTelefone">
-            </div>
-            <div class="form-group">
-                <label>Rodovia:</label>
-                <input type="text" id="mRodovia" required>
-            </div>
-            <div class="form-group">
-                <label>Sentido:</label>
-                <select id="mSentido" required>
-                    <option value="Norte">Norte</option>
-                    <option value="Sul">Sul</option>
-                    <option value="Leste">Leste</option>
-                    <option value="Oeste">Oeste</option>
-                    <option value="Capital">Capital</option>
-                    <option value="Interior">Interior</option>
-                    <option value="Não Sei">Não Sei</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Problema:</label>
-                <textarea id="mProblema" rows="3" required></textarea>
-            </div>
-            <div class="form-group">
-                <label>Status:</label>
-                <select id="mStatus">
-                    <option value="nova">Nova</option>
-                    <option value="atendimento">Em Atendimento</option>
-                    <option value="socorro">Socorro Acionado</option>
-                    <option value="encerrada">Encerrada</option>
-                </select>
-            </div>
-
-            <div class="modal-buttons">
-                <button type="button" class="btn" style="background:#ccc;" id="btnFecharModal">Cancelar</button>
-                <button type="submit" class="btn btn-add">Salvar</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script type="module">
-import { escutarOcorrencias, criarOcorrencia, atualizarOcorrencia, excluirOcorrencia } from "./firebase.js";
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
 
 let todasOcorrencias = [];
 let ocorrenciasFiltradas = [];
 
 // LOGIN
 document.getElementById("btnLogin").addEventListener("click", () => {
-    const user = document.getElementById("adminUser").value;
-    const pass = document.getElementById("adminPass").value;
+    const user = document.getElementById("adminUser").value.trim();
+    const pass = document.getElementById("adminPass").value.trim();
 
     if (user === "admin" && pass === "admin123") {
         document.getElementById("loginScreen").style.display = "none";
@@ -277,10 +40,20 @@ document.getElementById("btnLogout").addEventListener("click", () => {
 
 // ESCUTA EM TEMPO REAL
 function iniciarEscuta() {
-    escutarOcorrencias((lista) => {
-        todasOcorrencias = lista;
-        aplicarFiltros();
-    });
+    db.collection("ocorrencias")
+      .orderBy("criadoEm", "desc")
+      .onSnapshot((snapshot) => {
+          todasOcorrencias = [];
+          snapshot.forEach((doc) => {
+              todasOcorrencias.push({
+                  id: doc.id,
+                  ...doc.data()
+              });
+          });
+          aplicarFiltros();
+      }, (erro) => {
+          console.error("Erro no listener de ocorrências:", erro);
+      });
 }
 
 // FILTRAGEM
@@ -293,7 +66,6 @@ function aplicarFiltros() {
         let okData = true;
         let okRodovia = true;
 
-        // Converte timestamp do Firebase para Date
         let dataItem = null;
         if (o.criadoEm && typeof o.criadoEm.toDate === 'function') {
             dataItem = o.criadoEm.toDate();
@@ -364,7 +136,6 @@ function renderizarTabela(lista) {
             </td>
         `;
 
-        // Eventos Editar / Excluir
         tr.querySelector(".btn-edit").addEventListener("click", () => abrirModalEdicao(o));
         tr.querySelector(".btn-delete").addEventListener("click", () => deletar(o.id));
 
@@ -413,19 +184,22 @@ form.addEventListener("submit", async (e) => {
         rodovia: document.getElementById("mRodovia").value,
         sentido: document.getElementById("mSentido").value,
         problema: document.getElementById("mProblema").value,
-        status: document.getElementById("mStatus").value
+        status: document.getElementById("mStatus").value,
+        atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
     };
 
     try {
         if (id) {
-            await atualizarOcorrencia(id, dados);
+            await db.collection("ocorrencias").doc(id).update(dados);
             alert("Chamado atualizado!");
         } else {
-            await criarOcorrencia(dados);
+            dados.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
+            await db.collection("ocorrencias").add(dados);
             alert("Chamado inserido!");
         }
         modal.style.display = "none";
     } catch (err) {
+        console.error(err);
         alert("Erro ao salvar chamado.");
     }
 });
@@ -433,9 +207,10 @@ form.addEventListener("submit", async (e) => {
 async function deletar(id) {
     if (confirm("Tem certeza que deseja excluir permanentemente este chamado?")) {
         try {
-            await excluirOcorrencia(id);
+            await db.collection("ocorrencias").doc(id).delete();
             alert("Chamado excluído com sucesso.");
         } catch (err) {
+            console.error(err);
             alert("Erro ao excluir chamado.");
         }
     }
@@ -475,7 +250,7 @@ document.getElementById("btnExportPDF").addEventListener("click", () => {
     if (ocorrenciasFiltradas.length === 0) return alert("Nenhum dado para exportar!");
 
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('l', 'mm', 'a4'); // Paisagem
+    const doc = new jsPDF('l', 'mm', 'a4');
 
     doc.setFontSize(16);
     doc.text("Relatório de Chamados - DER SP", 14, 15);
@@ -506,6 +281,3 @@ document.getElementById("btnExportPDF").addEventListener("click", () => {
     doc.save("chamados_der_export.pdf");
 });
 </script>
-
-</body>
-</html>
