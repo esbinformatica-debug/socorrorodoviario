@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa de Ocorrências em Tempo Real - DER-SP</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        #map { width: 100vw; height: 100vh; margin: 0; padding: 0; }
+        body { margin: 0; }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module">
+import { escutarOcorrencias } from "./firebase.js";
+
+const map = L.map('map').setView([-23.5505, -46.6333], 8); // Posição padrão SP
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors'
+}).addTo(map);
+
+let markers = [];
+
+escutarOcorrencias((lista) => {
+    // Limpar marcadores anteriores
+    markers.forEach(m => map.removeLayer(m));
+    markers = [];
+
+    lista.forEach(o => {
+        if (o.latitude && o.longitude && o.status !== "encerrada") {
+            const marker = L.marker([o.latitude, o.longitude]).addTo(map);
+            marker.bindPopup(`
+                <b>Ocorrência #${o.id.substring(0,8)}</b><br>
+                <b>Motorista:</b> ${o.nome || 'N/I'}<br>
+                <b>Problema:</b> ${o.problema || '-'}<br>
+                <b>Status:</b> ${o.status}
+            `);
+            markers.push(marker);
+        }
+    });
+});
+</script>
+</body>
+</html>

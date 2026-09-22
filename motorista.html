@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitar Socorro Rodoviário - DER-SP</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; background: #f0f2f5; color: #333; padding: 15px; }
+        .card { background: white; max-width: 500px; margin: 0 auto; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        h1 { font-size: 20px; color: #14213d; margin-bottom: 15px; text-align: center; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px; }
+        input, select, textarea { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; }
+        button { width: 100%; padding: 15px; background: #d63031; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+        button:hover { background: #b22222; }
+        .gps-status { font-size: 12px; margin-top: 5px; color: #27ae60; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>🆘 Solicitar Socorro Rodoviário</h1>
+    <form id="formSocorro">
+        <div class="form-group">
+            <label>Nome Completo</label>
+            <input type="text" id="nome" required placeholder="Digite o seu nome">
+        </div>
+        <div class="form-group">
+            <label>Telefone / WhatsApp</label>
+            <input type="tel" id="telefone" required placeholder="(12) 99999-9999">
+        </div>
+        <div class="form-group">
+            <label>Placa do Veículo</label>
+            <input type="text" id="placa" required placeholder="ABC1D23">
+        </div>
+        <div class="form-group">
+            <label>Modelo do Veículo</label>
+            <input type="text" id="modelo" required placeholder="Ex: Gol Prata">
+        </div>
+        <div class="form-group">
+            <label>Nº de Ocupantes</label>
+            <input type="number" id="ocupantes" min="1" value="1" required>
+        </div>
+        <div class="form-group">
+            <label>Rodovia</label>
+            <input type="text" id="rodovia" required placeholder="Ex: SP-123 km 45">
+        </div>
+        <div class="form-group">
+            <label>Sentido</label>
+            <select id="sentido" required>
+                <option value="Capital/Interior">Capital / Interior</option>
+                <option value="Interior/Capital">Interior / Capital</option>
+                <option value="Norte">Norte</option>
+                <option value="Sul">Sul</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Tipo de Problema</label>
+            <select id="problema" required>
+                <option value="Pane Mecânica">Pane Mecânica</option>
+                <option value="Pane Elétrica">Pane Elétrica</option>
+                <option value="Pneu Furado">Pneu Furado</option>
+                <option value="Falta de Combustível">Falta de Combustível (Pane Seca)</option>
+                <option value="Acidente">Acidente / Colisão</option>
+                <option value="Outros">Outros</option>
+            </select>
+        </div>
+
+        <div class="gps-status" id="gpsStatus">📍 Obtendo localização GPS...</div>
+        <br>
+        <button type="submit" id="btnEnviar">ENVIAR PEDIDO DE SOCORRO</button>
+    </form>
+</div>
+
+<script type="module">
+import { salvarOcorrencia } from "./firebase.js";
+
+let coords = { latitude: null, longitude: null };
+
+if ("geolocation" in navigator) {
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            coords.latitude = pos.coords.latitude;
+            coords.longitude = pos.coords.longitude;
+            document.getElementById("gpsStatus").innerText = "📍 Localização GPS capturada!";
+        },
+        (err) => {
+            document.getElementById("gpsStatus").innerText = "⚠️ Não foi possível obter o GPS automático.";
+            document.getElementById("gpsStatus").style.color = "#e63946";
+        },
+        { enableHighAccuracy: true }
+    );
+}
+
+document.getElementById("formSocorro").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById("btnEnviar");
+    btn.disabled = true;
+    btn.innerText = "A Enviar...";
+
+    const dados = {
+        nome: document.getElementById("nome").value,
+        telefone: document.getElementById("telefone").value,
+        placa: document.getElementById("placa").value.toUpperCase(),
+        modelo: document.getElementById("modelo").value,
+        ocupantes: document.getElementById("ocupantes").value,
+        rodovia: document.getElementById("rodovia").value,
+        sentido: document.getElementById("sentido").value,
+        problema: document.getElementById("problema").value,
+        latitude: coords.latitude,
+        longitude: coords.longitude
+    };
+
+    try {
+        const id = await salvarOcorrencia(dados);
+        alert("Socorro acionado com sucesso! O ID do seu chamado é: #" + id.substring(0, 8));
+        document.getElementById("formSocorro").reset();
+    } catch (err) {
+        alert("Erro ao acionar socorro. Tente novamente.");
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "ENVIAR PEDIDO DE SOCORRO";
+    }
+});
+</script>
+
+</body>
+</html>

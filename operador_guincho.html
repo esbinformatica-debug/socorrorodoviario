@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel do Guincho - Socorro Rodoviário</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; background: #eef1f5; padding: 15px; }
+        .card { background: white; max-width: 600px; margin: 0 auto; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        h1 { font-size: 18px; color: #14213d; margin-bottom: 15px; }
+        .info { margin-bottom: 10px; font-size: 14px; }
+        .btn { padding: 10px 15px; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; color: white; width: 100%; margin-top: 5px; }
+        .btn-maps { background: #2878d7; }
+        .btn-cheguei { background: #f39c12; }
+        .btn-concluido { background: #27ae60; }
+    </style>
+</head>
+<body>
+
+<h1 style="text-align: center; margin-bottom: 15px;">🚛 Chamados Atribuídos ao Guincho</h1>
+<div id="containerChamados">Carregando chamados...</div>
+
+<script type="module">
+import { escutarOcorrencias, alterarStatus } from "./firebase.js";
+
+escutarOcorrencias((lista) => {
+    const chamadosGuincho = lista.filter(o => o.status === "socorro" || o.status === "em_deslocamento" || o.status === "no_local");
+    const container = document.getElementById("containerChamados");
+    container.innerHTML = "";
+
+    if (chamadosGuincho.length === 0) {
+        container.innerHTML = "<p style='text-align:center;'>Nenhum socorro acionado de momento.</p>";
+        return;
+    }
+
+    chamadosGuincho.forEach(o => {
+        const div = document.createElement("div");
+        div.className = "card";
+        div.innerHTML = `
+            <h1>Chamado #${o.id.substring(0,8)} - ${o.problema || 'Socorro'}</h1>
+            <div class="info"><strong>Motorista:</strong> ${o.nome || '-'} (${o.telefone || '-'})</div>
+            <div class="info"><strong>Veículo:</strong> ${o.modelo || '-'} | Placa: ${o.placa || '-'}</div>
+            <div class="info"><strong>Local:</strong> ${o.rodovia || '-'} (${o.sentido || '-'})</div>
+            <div class="info"><strong>Status:</strong> ${o.status}</div>
+            
+            <button class="btn btn-maps" onclick="abrirRota(${o.latitude}, ${o.longitude})">📍 Abrir Rota no Google Maps</button>
+            <button class="btn btn-cheguei" onclick="atualizar('${o.id}', 'no_local')">📍 Cheguei ao Local</button>
+            <button class="btn btn-concluido" onclick="atualizar('${o.id}', 'encerrada')">✅ Finalizar Atendimento</button>
+        `;
+        container.appendChild(div);
+    });
+});
+
+window.abrirRota = function(lat, lng) {
+    if (!lat || !lng) return alert("Sem GPS registrado.");
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, "_blank");
+};
+
+window.atualizar = async function(id, status) {
+    await alterarStatus(id, status, "Motorista Guincho");
+};
+</script>
+</body>
+</html>
